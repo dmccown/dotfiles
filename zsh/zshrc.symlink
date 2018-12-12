@@ -17,5 +17,8 @@ antigen theme geoffgarside
 antigen apply
 
 # Sourcing shell helpers
+touch ~/.zsh_exports_secrets
+
 source ~/.zsh_exports
 source ~/.zsh_aliases
+source ~/.zsh_exports_secrets
