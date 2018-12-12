@@ -1,0 +1,15 @@
+# Common shortcuts
+alias reload="source ~/.zshrc"
+
+# Directory traversal
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias ~="cd ~"
+alias -- -="cd -"
+
+# Directory listings
+alias ll="ls -al"
+
+# IP addresses
+alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
