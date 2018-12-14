@@ -25,28 +25,26 @@ Plug 'scrooloose/syntastic'
 Plug 'corntrace/bufexplorer'
 Plug 'ecomba/vim-ruby-refactoring'
 Plug 'kien/ctrlp.vim'
-Plug 'powerline/powerline'
 Plug 'kien/rainbow_parentheses.vim'
 Plug 'elixir-lang/vim-elixir'
 Plug 'scrooloose/nerdtree'
+Plug 'vim-airline/vim-airline'
+Plug 'vim-airline/vim-airline-themes'
 
 " Initialize plugin system
 call plug#end()
+
+" Configuring airline
+let g:airline#extensions#tabline#enabled = 1
+let g:airline_powerline_fonts = 1
+let g:airline_solarized_bg = 'dark'
+set t_Co=256
 
 let mapleader = ','
 
 syntax enable
 set background=dark
 colorscheme solarized
-
-""" FOR STATUSLINE
-set encoding=utf-8 " Necessary to show Unicode glyphs
-let g:Powerline_symbols = 'fancy'
-set rtp+=~/.vim/bundle/powerline/powerline/bindings/vim
-set laststatus=2   " Always show the statusline
-" For powerline font in MacVim
-set guifont=Meslo\ LG\ M\ for\ Powerline
-set fillchars+=stl:\ ,stlnc:\
 
 set autoindent          " Copy indent from current line for new line
 set nosmartindent       " 'smartindent' breaks right-shifting of # lines
