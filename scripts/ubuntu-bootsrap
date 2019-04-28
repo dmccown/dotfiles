@@ -10,6 +10,7 @@ GREEN='\033[0;32m'
 ORANGE='\033[0;33m'
 BLUE='\033[0;34m'
 REPLACE='\r\033[2K'
+DOTFILES_ROOT=$(pwd)
 
 info () {
   printf "  [ ${BLUE}..${NC} ] %s" "$1"
@@ -25,22 +26,20 @@ success () {
 }
 
 fail () {
-  printf "${REPLACE}  [${RED}FAIL${NC}] %s1\n" "$1"
+  printf "${REPLACE}  [${RED}FAIL${NC}] %s\n" "$1"
   echo ''
-  exit
+  exit 1
 }
 
 install_dependencies () {
   for app in "$@"; do
-    if ! [ -x "$(command -v "$app")" ]; then
-      info "Installing ${app}"
+    info "Installing ${app}"
 
-      if ! apt-get -qq install -y "${app}" > /dev/null; then
-        fail "Failed to install ${app}"
-      fi
-
-      success "Installed ${app}"
+    if ! sudo apt-get -qq install -y "${app}" > /dev/null; then
+      fail "Failed to install ${app}"
     fi
+
+    success "Installed ${app}"
   done
 }
 
@@ -51,20 +50,135 @@ set_default_shell () {
     fail 'zsh is not installed'
   fi
 
-  chsh -s "$(which zsh)"
+  sudo chsh -s "$(which zsh)"
 
   success 'zsh is the default shell'
 }
 
-install () {
+install_source_code_pro () {
+  info 'Installing Adobe Source Code Pro Font'
+
+  mkdir -p ~/.fonts
+
+  base_url=https://github.com/adobe-fonts/source-code-pro/releases/download/variable-fonts
+  fonts=( SourceCodeVariable-Italic.otf SourceCodeVariable-Roman.otf )
+  dirty=false
+
+  for font in "${fonts[@]}"; do
+    if ! [ -f ~/.fonts/"$font" ]; then
+      wget -q -P ~/.fonts "${base_url}"/"$font"
+      dirty=true
+    fi
+  done
+
+  if [ "$dirty" = true ]; then
+    fc-cache -f
+  fi
+
+  success 'Adobe Source Code Pro Font Installed.'
+}
+
+install_terminal_theme () {
+  info 'Installing custom terminal theme'
+
+  profile_id=0eee09d2-9aef-4efb-9195-dc81299c849c
+
+  dconf load /org/gnome/terminal/legacy/profiles:/:"${profile_id}"/ < terminal/david-theme-profile.dconf
+
+  gsettings set org.gnome.Terminal.ProfilesList default "${profile_id}"
+
+  success 'Custom terminal theme installed.'
+}
+
+link_file () {
+  local src dst overwrite backup skip action
+
+  src=$1
+  dst=$2
+
+  info "linking file $src to $dst"
+
+  if [ -f "$dst" ] || [ -d "$dst" ] || [ -L "$dst" ]; then
+     if [ "$overwrite_all" = "false" ] && [ "$backup_all" = "false" ] && [ "$skip_all" = "false" ]; then
+        local currentSrc
+        currentSrc="$(readlink "$dst")"
+
+        if [ "$currentSrc" = "$src" ]; then
+          skip=true;
+        else
+          user "File already exists: $dst ($(basename "$src")), what do you want to do?\n\
+          [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
+          read -r -n 1 action
+
+          case "$action" in
+            o )
+              overwrite=true;;
+            O )
+              overwrite_all=true;;
+            b )
+              backup=true;;
+            B )
+              backup_all=true;;
+            s )
+              skip=true;;
+            S )
+              skip_all=true;;
+            * )
+              ;;
+          esac
+
+        fi
+     fi
+
+     overwrite=${overwrite:-$overwrite_all}
+     backup=${backup:-$backup_all}
+     skip=${skip:-$skip_all}
+
+     if [ "$overwrite" = "true" ]; then
+       rm -rf "$dst"
+       success "removed $dst"
+     fi
+
+     if [ "$backup" = "true" ]; then
+       mv "$dst" "${dst}.backup"
+       success "moved $dst to ${dst}.backup"
+     fi
+
+     if [ "$skip" = "true" ]; then
+       success "skipped $src"
+     fi
+   fi
+
+   if [ "$skip" != "true" ]; then
+     ln -s "$1" "$2"
+     success "linked $1 to $2"
+   fi
+}
+
+install_dotfiles () {
+  local overwrite_all=false
+  local backup_all=false
+  local skip_all=false
+
+  find "$DOTFILES_ROOT" -maxdepth 2 -name '*.symlink' -print0 |
+    while IFS= read -r -d $'\0' line; do
+      dst="$HOME/.$(basename "${line%.*}")"
+      link_file "$line" "$dst"
+    done
+}
+
+setup () {
   echo '  Beginning installation'
   echo ''
 
-  install_dependencies curl zsh
+  install_dependencies curl zsh gconf2 vim
   set_default_shell
+  install_source_code_pro
+  install_terminal_theme
+  install_dotfiles
 }
 
-install
+setup
 
 echo ''
 echo '  All Installed!'

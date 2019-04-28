@@ -1,13 +1,30 @@
 # Dotfiles
 
-## Dependencies
+## Supported Platforms
+
+* Ubuntu
+* MacOS
+
+## MacOS
+
+### Dependencies
 
 1. Homebrew
-2. Zsh (brew)
-3. Vim (brew)
-4. git (brew)
-5. Monospaced fonts for powerline
+1. Zsh (brew)
+1. Vim (brew)
+1. git (brew)
+1. Monospaced fonts for powerline
 
-## Quickstart
+### Instructions
 
-```$ ./scripts/bootstrap```
+`$ ./scripts/bootstrap`
+
+## Ubuntu
+
+### Dependencies
+
+1. git
+
+### Instructions
+
+`$ ./scripts/ubuntu-bootstrap`
