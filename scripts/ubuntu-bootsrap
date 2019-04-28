@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+# bootstrap installs things.
+
+set -e
+
+NC='\033[0;0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+ORANGE='\033[0;33m'
+BLUE='\033[0;34m'
+REPLACE='\r\033[2K'
+
+info () {
+  printf "  [ ${BLUE}..${NC} ] %s" "$1"
+  sleep 1
+}
+
+user () {
+  printf "\r  [ ${ORANGE}?${NC} ] %s " "$1"
+}
+
+success () {
+  printf "${REPLACE}  [ ${GREEN}OK${NC} ] %s\n" "$1"
+}
+
+fail () {
+  printf "${REPLACE}  [${RED}FAIL${NC}] %s1\n" "$1"
+  echo ''
+  exit
+}
+
+install_dependencies () {
+  for app in "$@"; do
+    if ! [ -x "$(command -v "$app")" ]; then
+      info "Installing ${app}"
+
+      if ! apt-get -qq install -y "${app}" > /dev/null; then
+        fail "Failed to install ${app}"
+      fi
+
+      success "Installed ${app}"
+    fi
+  done
+}
+
+set_default_shell () {
+  info 'Setting zsh to default shell'
+
+  if ! [ -x "$(command -v zsh)" ]; then
+    fail 'zsh is not installed'
+  fi
+
+  chsh -s "$(which zsh)"
+
+  success 'zsh is the default shell'
+}
+
+install () {
+  echo '  Beginning installation'
+  echo ''
+
+  install_dependencies curl zsh
+  set_default_shell
+}
+
+install
+
+echo ''
+echo '  All Installed!'
+exit 0
