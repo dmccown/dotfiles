@@ -1,0 +1,185 @@
+#!/bin/bash
+#
+# bootstrap installs things.
+
+set -e
+
+NC='\033[0;0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+ORANGE='\033[0;33m'
+BLUE='\033[0;34m'
+REPLACE='\r\033[2K'
+DOTFILES_ROOT=$(pwd)
+
+info () {
+  printf "  [ ${BLUE}..${NC} ] %s" "$1"
+  sleep 1
+}
+
+user () {
+  printf "\r  [ ${ORANGE}?${NC} ] %s " "$1"
+}
+
+success () {
+  printf "${REPLACE}  [ ${GREEN}OK${NC} ] %s\n" "$1"
+}
+
+fail () {
+  printf "${REPLACE}  [${RED}FAIL${NC}] %s\n" "$1"
+  echo ''
+  exit 1
+}
+
+install_dependencies () {
+  for app in "$@"; do
+    info "Installing ${app}"
+
+    if ! sudo apt-get -qq install -y "${app}" > /dev/null; then
+      fail "Failed to install ${app}"
+    fi
+
+    success "Installed ${app}"
+  done
+}
+
+set_default_shell () {
+  info 'Setting zsh to default shell'
+
+  if ! [ -x "$(command -v zsh)" ]; then
+    fail 'zsh is not installed'
+  fi
+
+  sudo chsh -s "$(which zsh)"
+
+  success 'zsh is the default shell'
+}
+
+install_source_code_pro () {
+  info 'Installing Adobe Source Code Pro Font'
+
+  mkdir -p ~/.fonts
+
+  base_url=https://github.com/adobe-fonts/source-code-pro/releases/download/variable-fonts
+  fonts=( SourceCodeVariable-Italic.otf SourceCodeVariable-Roman.otf )
+  dirty=false
+
+  for font in "${fonts[@]}"; do
+    if ! [ -f ~/.fonts/"$font" ]; then
+      wget -q -P ~/.fonts "${base_url}"/"$font"
+      dirty=true
+    fi
+  done
+
+  if [ "$dirty" = true ]; then
+    fc-cache -f
+  fi
+
+  success 'Adobe Source Code Pro Font Installed.'
+}
+
+install_terminal_theme () {
+  info 'Installing custom terminal theme'
+
+  profile_id=0eee09d2-9aef-4efb-9195-dc81299c849c
+
+  dconf load /org/gnome/terminal/legacy/profiles:/:"${profile_id}"/ < terminal/david-theme-profile.dconf
+
+  gsettings set org.gnome.Terminal.ProfilesList default "${profile_id}"
+
+  success 'Custom terminal theme installed.'
+}
+
+link_file () {
+  local src dst overwrite backup skip action
+
+  src=$1
+  dst=$2
+
+  info "linking file $src to $dst"
+
+  if [ -f "$dst" ] || [ -d "$dst" ] || [ -L "$dst" ]; then
+     if [ "$overwrite_all" = "false" ] && [ "$backup_all" = "false" ] && [ "$skip_all" = "false" ]; then
+        local currentSrc
+        currentSrc="$(readlink "$dst")"
+
+        if [ "$currentSrc" = "$src" ]; then
+          skip=true;
+        else
+          user "File already exists: $dst ($(basename "$src")), what do you want to do?\n\
+          [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
+          read -r -n 1 action
+
+          case "$action" in
+            o )
+              overwrite=true;;
+            O )
+              overwrite_all=true;;
+            b )
+              backup=true;;
+            B )
+              backup_all=true;;
+            s )
+              skip=true;;
+            S )
+              skip_all=true;;
+            * )
+              ;;
+          esac
+
+        fi
+     fi
+
+     overwrite=${overwrite:-$overwrite_all}
+     backup=${backup:-$backup_all}
+     skip=${skip:-$skip_all}
+
+     if [ "$overwrite" = "true" ]; then
+       rm -rf "$dst"
+       success "removed $dst"
+     fi
+
+     if [ "$backup" = "true" ]; then
+       mv "$dst" "${dst}.backup"
+       success "moved $dst to ${dst}.backup"
+     fi
+
+     if [ "$skip" = "true" ]; then
+       success "skipped $src"
+     fi
+   fi
+
+   if [ "$skip" != "true" ]; then
+     ln -s "$1" "$2"
+     success "linked $1 to $2"
+   fi
+}
+
+install_dotfiles () {
+  local overwrite_all=false
+  local backup_all=false
+  local skip_all=false
+
+  find "$DOTFILES_ROOT" -maxdepth 2 -name '*.symlink' -print0 |
+    while IFS= read -r -d $'\0' line; do
+      dst="$HOME/.$(basename "${line%.*}")"
+      link_file "$line" "$dst"
+    done
+}
+
+setup () {
+  echo '  Beginning installation'
+  echo ''
+
+  install_dependencies curl zsh gconf2 vim
+  set_default_shell
+  install_source_code_pro
+  install_terminal_theme
+  install_dotfiles
+}
+
+setup
+
+echo ''
+echo '  All Installed!'
+exit 0
